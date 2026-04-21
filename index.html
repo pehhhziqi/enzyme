@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Enzyme Quest</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#020617;color:#fff}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes jump{0%,100%{transform:translateY(0)}35%{transform:translateY(-28px) scaleY(.9)}50%{transform:translateY(-32px) scaleX(1.1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+@keyframes coinUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-65px) scale(.5);opacity:0}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes blink{0%,85%,100%{transform:scaleY(1)}93%{transform:scaleY(.08)}}
+@keyframes starIn{0%{transform:scale(0) rotate(-15deg);opacity:0}65%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes confDrop{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(300px) rotate(600deg)}}
+@keyframes twinkle{0%,100%{opacity:.2}50%{opacity:.9}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes heartbeat{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+@keyframes glow{0%,100%{box-shadow:0 0 8px rgba(251,191,36,.3)}50%{box-shadow:0 0 22px rgba(251,191,36,.7)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+// ─────────────────────────────────────────────
+// PASTE YOUR ANTHROPIC API KEY HERE
+// Get one free at: https://console.anthropic.com
+// Without a key, the game still works using
+// the built-in fallback questions below.
+// ─────────────────────────────────────────────
+const API_KEY = "";
+
+const { useState, useRef } = React;
+
+const CC = ["#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#fff"];
+
+const FB = {
+  0:[
+    {type:"mcq",question:"Which test gives a positive result for enzymes?",answer:"D. Biuret test",options:["A. Benedict's test","B. Starch test","C. Ethanol emulsion test","D. Biuret test"],hint:"Enzymes are proteins — the biuret test detects proteins, turning the solution purple/violet."},
+    {type:"mcq",question:"What does amylase digest and into what product?",answer:"B. Starch into maltose",options:["A. Maltose into glucose","B. Starch into maltose","C. Proteins into amino acids","D. Fats into fatty acids and glycerol"],hint:"Amylase acts on its substrate starch and breaks it down into maltose."},
+    {type:"mcq",question:"Which is NOT a characteristic of enzymes?",answer:"C. They are used up during reactions",options:["A. They lower activation energy","B. They are biological catalysts","C. They are used up during reactions","D. They speed up chemical reactions"],hint:"Enzymes remain chemically unchanged at the end of the reaction and can be reused."},
+    {type:"fitb",question:"Enzymes are ___ that function as biological catalysts.",answer:"proteins",hint:"Enzymes are made of proteins, which is why they give a positive biuret test result."},
+    {type:"explain",question:"Explain what activation energy is and how enzymes affect it.",keywords:["activation energy","lower","minimum","reaction","catalyst"],modelAnswer:"Activation energy is the minimum amount of energy needed to start a chemical reaction. Enzymes lower this activation energy, making it easier for reactions to occur and speeding up the rate of reaction without being chemically changed themselves.",hint:"Activation energy = minimum energy to start a reaction. Enzymes lower it."}
+  ],
+  1:[
+    {type:"mcq",question:"In the lock-and-key hypothesis, which is the lock and which is the key?",answer:"A. Enzyme is the lock; substrate is the key",options:["A. Enzyme is the lock; substrate is the key","B. Substrate is the lock; enzyme is the key","C. Active site is the lock; enzyme is the key","D. Products are the lock; substrate is the key"],hint:"The enzyme (lock) has an active site into which only the specific substrate (key) can fit."},
+    {type:"mcq",question:"What forms when a substrate binds to an enzyme's active site?",answer:"C. Enzyme-substrate complex",options:["A. Enzyme-product complex","B. Lock-and-key complex","C. Enzyme-substrate complex","D. Catalyst-reactant complex"],hint:"When the substrate fits the active site, they form an enzyme-substrate complex before the reaction occurs."},
+    {type:"mcq",question:"Why can amylase NOT break down proteins?",answer:"B. Protein shape is not complementary to amylase's active site",options:["A. Amylase has no active site","B. Protein shape is not complementary to amylase's active site","C. Proteins are too large for any enzyme","D. Amylase is not a catalyst"],hint:"Only substrates with a complementary 3D shape can bind to the enzyme's active site."},
+    {type:"fitb",question:"Only a substrate with a shape ___ to the active site can fit into the enzyme.",answer:"complementary",hint:"Complementary means the shapes match perfectly, just like a specific key fits only its own lock."},
+    {type:"explain",question:"Describe the mode of action of an enzyme using the lock-and-key hypothesis.",keywords:["active site","complementary","enzyme-substrate complex","products","chemically unchanged"],modelAnswer:"The enzyme has a specific 3D shape containing an active site. Only a substrate with a complementary shape can bind to this site, forming an enzyme-substrate complex. The substrate is converted to products, which detach from the active site. The enzyme remains chemically unchanged and can be reused.",hint:"Active site + complementary substrate = enzyme-substrate complex, products released, enzyme unchanged."}
+  ],
+  2:[
+    {type:"mcq",question:"What happens to enzyme activity as temperature rises toward the optimum?",answer:"B. Enzyme activity increases",options:["A. Activity decreases immediately","B. Enzyme activity increases","C. Activity stays the same","D. Enzyme is immediately denatured"],hint:"Rising temperature increases kinetic energy, causing more effective collisions and more enzyme-substrate complexes."},
+    {type:"mcq",question:"What is denaturation?",answer:"A. A permanent change in the 3D shape of an enzyme",options:["A. A permanent change in the 3D shape of an enzyme","B. The death of an enzyme","C. A temporary slowing of enzyme activity","D. Breaking of the enzyme into pieces"],hint:"Denaturation is a permanent change in 3D shape. Enzymes do NOT die — they are denatured."},
+    {type:"mcq",question:"What causes enzyme denaturation?",answer:"D. Both extremely high temperature and extreme pH",options:["A. Low temperature only","B. Neutral pH only","C. Optimum temperature","D. Both extremely high temperature and extreme pH"],hint:"Denaturation is caused by (1) extremely high temperatures and (2) extreme acidity or alkalinity."},
+    {type:"fitb",question:"Above the optimum temperature, the active site loses its shape and the enzyme is ___.",answer:"denatured",hint:"High temperatures break bonds within the enzyme, permanently changing its 3D shape — this is denaturation."},
+    {type:"fitb",question:"At low temperatures, enzymes are inactive because the ___ energy of molecules is low, reducing effective collisions.",answer:"kinetic",hint:"Low kinetic energy means substrate molecules rarely collide effectively with the enzyme."},
+    {type:"explain",question:"Explain what happens to an enzyme above its optimum temperature and why enzyme activity falls to zero.",keywords:["optimum temperature","bonds","3D shape","active site","denatured","substrate"],modelAnswer:"Above the optimum temperature, high temperature breaks the bonds within the enzyme, causing its 3D shape to change. The active site loses its original shape and the enzyme is denatured. The substrate can no longer fit into the active site, so no enzyme-substrate complexes form and enzyme activity falls to zero.",hint:"High temp breaks bonds, 3D shape changes, active site lost, substrate cannot fit, denatured, no reaction."}
+  ]
+};
+
+const NOTES = "ENZYMES - Secondary 3 Biology Singapore: Enzymes are proteins that function as biological catalysts. They speed up chemical reactions, remain chemically unchanged, and lower activation energy (minimum energy to start a reaction). Named after substrate, end in -ase. Biuret test positive. Examples: Amylase digests starch to maltose; Maltase digests maltose to glucose; Protease digests proteins to amino acids; Lipase digests fats to fatty acids and glycerol. Lock-and-key: enzyme has specific 3D shape with active site. Only substrate with COMPLEMENTARY shape forms enzyme-substrate complex. Enzyme=lock, Substrate=key. Products detach, enzyme chemically unchanged and reused. Enzyme specificity: one unique enzyme per reaction. Temperature: low=inactive (low kinetic energy, few effective collisions); rising=more activity; optimum=highest rate (~40C); above optimum=denaturation (bonds break, 3D shape changes, active site lost, activity zero). pH: each enzyme has optimum pH; extreme acidity or alkalinity causes denaturation. Denaturation: permanent change in 3D shape caused by heat or acids/alkalis. Active site lost, substrate cannot fit, no reaction. Irreversible. Enzymes do NOT die.";
+
+const MS = [
+  {id:0,world:"World 1",sub:"Enzyme Basics",emoji:"🔬",color:"#06b6d4",light:"#a5f3fc",bg:"linear-gradient(160deg,#042f3e,#0e7490,#0891b2)",count:5,
+   focus:"enzyme definition (proteins, biological catalysts, chemically unchanged, lowers activation energy), activation energy definition, enzyme naming ends -ase, biuret test positive for proteins/enzymes, examples: amylase starch to maltose; maltase maltose to glucose; protease proteins to amino acids; lipase fats to fatty acids and glycerol. Anabolic vs catabolic reactions."},
+  {id:1,world:"World 2",sub:"Lock and Key HQ",emoji:"🔑",color:"#a855f7",light:"#d8b4fe",bg:"linear-gradient(160deg,#1e0a3c,#7e22ce,#9333ea)",count:5,
+   focus:"lock and key hypothesis: enzyme has specific 3D shape with active site; only substrate with COMPLEMENTARY shape fits; enzyme=lock substrate=key; substrate binds forming enzyme-substrate complex; reaction occurs; products detach; enzyme chemically unchanged and reused. Enzyme specificity: one unique enzyme per reaction."},
+  {id:2,world:"World 3",sub:"Denaturation Lab",emoji:"🧪",color:"#ef4444",light:"#fca5a5",bg:"linear-gradient(160deg,#1c0505,#991b1b,#dc2626)",count:6,
+   focus:"temperature effects: low=inactive (low kinetic energy, few effective collisions); rising=increased activity (more kinetic energy, more effective collisions, more enzyme-substrate complexes); optimum ~40C; above optimum=denaturation (bonds break, 3D shape changes, active site loses original shape, activity zero). pH effects and denaturation: causes (heat, acids/alkalis), effects (active site lost, substrate cannot fit, no reaction). Misconception: enzymes denature not die."}
+];
+
+function Stars() {
+  const r = useRef(null);
+  if (!r.current) r.current = Array.from({length:18},(_,i)=>({id:i,w:1.5+Math.random()*2,top:Math.random()*100,left:Math.random()*100,op:.2+Math.random()*.7,dur:1.2+Math.random()*2.5,del:Math.random()*2}));
+  return (
+    <div style={{position:"absolute",inset:0,pointerEvents:"none",overflow:"hidden"}}>
+      {r.current.map(s=>(
+        <div key={s.id} style={{position:"absolute",width:s.w,height:s.w,background:"white",borderRadius:"50%",top:s.top+"%",left:s.left+"%",opacity:s.op,animation:`twinkle ${s.dur}s ${s.del}s infinite`}}/>
+      ))}
+    </div>
+  );
+}
+
+function Confetti() {
+  const p = useRef(Array.from({length:20},(_,i)=>({id:i,c:CC[i%CC.length],x:5+Math.random()*90,d:Math.random()*.7,sz:7+Math.random()*9,r:Math.random()*360,ci:Math.random()>.45}))).current;
+  return (
+    <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:9999,overflow:"hidden"}}>
+      {p.map(p=>(
+        <div key={p.id} style={{position:"absolute",left:p.x+"%",top:-20,width:p.sz,height:p.sz,background:p.c,borderRadius:p.ci?"50%":"3px",transform:`rotate(${p.r}deg)`,animation:`confDrop 1.8s ${p.d}s ease-in forwards`}}/>
+      ))}
+    </div>
+  );
+}
+
+function Char({mood="idle", color="#60a5fa", size=80, anim=""}) {
+  const wa = anim ? `${anim} 0.6s ease` : mood==="idle" ? "float 3s ease-in-out infinite" : "none";
+  const ec = mood==="sad" ? "#6b7280" : "#1e293b";
+  return (
+    <div style={{animation:wa,display:"inline-block",transformOrigin:"bottom center"}}>
+      <svg width={size} height={size} viewBox="0 0 100 100" style={{overflow:"visible"}}>
+        <ellipse cx="50" cy="97" rx="26" ry="5" fill="rgba(0,0,0,0.25)"/>
+        <ellipse cx="50" cy="54" rx="36" ry="33" fill={color}/>
+        <path d="M14 44 Q29 37 29 54 Q29 68 14 68 Z" fill="rgba(0,0,0,0.2)"/>
+        <ellipse cx="37" cy="32" rx="11" ry="7" fill="rgba(255,255,255,0.28)" transform="rotate(-18,37,32)"/>
+        <g style={{animation:"blink 2.8s infinite",transformOrigin:"43px 40px"}}>
+          <ellipse cx="43" cy="40" rx="7" ry="7.5" fill="white"/>
+          <ellipse cx="44" cy="41" rx="4.5" ry="4.5" fill={ec}/>
+          <circle cx="46" cy="39" r="1.5" fill="white"/>
+        </g>
+        <g style={{animation:"blink 2.8s 1.2s infinite",transformOrigin:"63px 40px"}}>
+          <ellipse cx="63" cy="40" rx="7" ry="7.5" fill="white"/>
+          <ellipse cx="64" cy="41" rx="4.5" ry="4.5" fill={ec}/>
+          <circle cx="66" cy="39" r="1.5" fill="white"/>
+        </g>
+        {mood==="happy" && <path d="M36 58 Q50 72 64 58" fill="none" stroke="#1e293b" strokeWidth="3.5" strokeLinecap="round"/>}
+        {mood==="sad"   && <path d="M37 66 Q50 56 63 66" fill="none" stroke="#6b7280" strokeWidth="3.5" strokeLinecap="round"/>}
+        {mood==="idle"  && <path d="M40 61 Q50 66 60 61" fill="none" stroke="#1e293b" strokeWidth="3.5" strokeLinecap="round"/>}
+        {mood==="happy" && <text x="76" y="22" fontSize="13" style={{animation:"float 1s infinite"}}>✨</text>}
+        {mood==="sad"   && <text x="68" y="28" fontSize="11">💧</text>}
+      </svg>
+    </div>
+  );
+}
+
+function App() {
+  const [screen, setScreen] = useState("title");
+  const [unlocked, setUnlocked] = useState([true,false,false]);
+  const [bSc, setBSc] = useState([null,null,null]);
+  const [bSt, setBSt] = useState([0,0,0]);
+  const [mIdx, setMIdx] = useState(0);
+  const [qs, setQs] = useState([]);
+  const [maxP, setMaxP] = useState(0);
+  const [qIdx, setQIdx] = useState(0);
+  const [score, setScore] = useState(0);
+  const [lives, setLives] = useState(3);
+  const [streak, setStreak] = useState(0);
+  const [inp, setInp] = useState("");
+  const [sel, setSel] = useState(null);
+  const [fb, setFb] = useState(null);
+  const [marking, setMarking] = useState(false);
+  const [mood, setMood] = useState("idle");
+  const [ca, setCa] = useState("");
+  const [coins, setCoins] = useState(false);
+  const [conf, setConf] = useState(false);
+  const [eScore, setEScore] = useState(0);
+  const [eStars, setEStars] = useState(0);
+  const m = MS[mIdx];
+
+  const api = async (sys, usr, t=900) => {
+    if (!API_KEY) throw new Error("No API key");
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:t,system:sys,messages:[{role:"user",content:usr}]})
+    });
+    const d = await r.json();
+    return d.content.map(b => b.text||"").join("");
+  };
+
+  const go = async (idx) => {
+    setMIdx(idx); setScreen("loading");
+    setScore(0); setStreak(0); setQIdx(0); setFb(null); setInp(""); setSel(null);
+    setLives(3); setMood("idle"); setCa("");
+    const ms = MS[idx];
+    try {
+      const sys = "Return ONLY a valid JSON array. No markdown. Each item: type(mcq|fitb|explain), question(fitb uses ___), answer(mcq starts A/B/C/D), options(mcq only,4 strings), keywords(explain,3-5 strings), modelAnswer(explain,2-3 sentences), hint(1 sentence). Notes: "+NOTES;
+      const usr = "Generate "+ms.count+" Secondary 3 biology questions on: "+ms.focus+". At least 2 mcq, 1 fitb, 1 explain. fitb blank=single key term. Use keywords: complementary, active site, enzyme-substrate complex, 3D shape, denatured, chemically unchanged, kinetic energy, effective collisions. Vary phrasing. Return ONLY JSON array.";
+      const txt = await api(sys, usr, 2000);
+      const cl = txt.replace(/```json\s?|```/g,"").trim();
+      const s = cl.indexOf("["), e = cl.lastIndexOf("]");
+      const p = JSON.parse(s>-1&&e>-1 ? cl.slice(s,e+1) : cl);
+      setQs(p); setMaxP(p.reduce((a,q)=>a+(q.type==="mcq"?5:q.type==="fitb"?10:15),0));
+      setScreen("playing");
+    } catch {
+      const f = FB[idx];
+      setQs(f); setMaxP(f.reduce((a,q)=>a+(q.type==="mcq"?5:q.type==="fitb"?10:15),0));
+      setScreen("playing");
+    }
+  };
+
+  const sub = async () => {
+    const q = qs[qIdx]; let pts=0, ok=false, msg=null;
+    if (q.type==="mcq") {
+      const cl = (q.answer||"").charAt(0).toUpperCase();
+      ok = sel===cl; pts = ok?5:0;
+    } else if (q.type==="fitb") {
+      const n = s => s.toLowerCase().trim().replace(/[^a-z0-9 -]/g,"");
+      const a=n(q.answer||""), g=n(inp);
+      ok = a===g||(g.length>2&&(a.includes(g)||g.includes(a))); pts=ok?10:0;
+    } else {
+      setMarking(true);
+      try {
+        const s2 = 'Biology teacher. Return ONLY JSON: {"score":<0-15>,"feedback":"<2-3 sentences>"}';
+        const u2 = "Q: "+q.question+"\nModel: "+q.modelAnswer+"\nKeywords: "+(q.keywords||[]).join(", ")+"\nStudent: "+(inp||"no answer")+"\n0-5=missing; 6-9=partial; 10-12=mostly; 13-15=accurate with key terms. Be encouraging.";
+        const txt = await api(s2, u2, 300);
+        const m2 = txt.match(/\{[\s\S]*\}/);
+        const p = JSON.parse(m2?m2[0]:txt);
+        pts = Math.min(15,Math.max(0,Number(p.score)||0)); msg=p.feedback||""; ok=pts>=8;
+      } catch {
+        const kw=q.keywords||[], mt=kw.filter(k=>(inp||"").toLowerCase().includes(k.toLowerCase()));
+        pts=Math.round((mt.length/Math.max(kw.length,1))*15); ok=pts>=8;
+        msg="You included "+mt.length+"/"+kw.length+" key terms"+(mt.length?": "+mt.join(", "):"")+". Check the model answer!";
+      }
+      setMarking(false);
+    }
+    const ns=ok?streak+1:0, bon=(ns>0&&ns%3===0)?5:0;
+    const nl=ok?lives:Math.max(0,lives-1), nsc=score+pts+bon;
+    setStreak(ns); setScore(nsc); setLives(nl);
+    setMood(ok?"happy":"sad"); setCa(ok?"jump":"shake");
+    if(ok){setCoins(true);setTimeout(()=>setCoins(false),1300);}
+    setTimeout(()=>{setCa("");setMood("idle");},900);
+    setFb({ok,pts,bon,msg,hint:q.hint,ma:q.modelAnswer,ans:q.answer,nsc,nl,type:q.type,opts:q.options});
+    if(nl===0) setTimeout(()=>setScreen("gameOver"),1400);
+  };
+
+  const nxt = () => {
+    if(lives===0) return;
+    if(qIdx+1>=qs.length) {
+      const fin=fb?fb.nsc:score, pct=maxP>0?Math.round((fin/maxP)*100):0;
+      const st=pct>=80?3:pct>=55?2:pct>=30?1:0;
+      const nb=bSc.slice(); if(nb[mIdx]===null||fin>nb[mIdx]) nb[mIdx]=fin; setBSc(nb);
+      const ns=bSt.slice(); if(st>ns[mIdx]) ns[mIdx]=st; setBSt(ns);
+      if(mIdx+1<3){const nu=unlocked.slice();nu[mIdx+1]=true;setUnlocked(nu);}
+      setEScore(fin); setEStars(st);
+      setConf(true); setTimeout(()=>setConf(false),2500);
+      setScreen("missionEnd");
+    } else {
+      setQIdx(i=>i+1); setFb(null); setInp(""); setSel(null); setMood("idle"); setCa("");
+    }
+  };
+
+  if(screen==="title") return (
+    <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#020617,#0f172a,#1e1b4b)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,textAlign:"center",position:"relative",overflow:"hidden"}}>
+      <Stars/>
+      {[["8%","12%","#06b6d4"],["80%","18%","#a855f7"],["12%","75%","#ef4444"],["75%","68%","#eab308"]].map(([l,t,c],i)=>(
+        <div key={i} style={{position:"absolute",left:l,top:t,width:70,height:70,borderRadius:"50%",background:`radial-gradient(circle,${c}30,transparent)`,animation:`float ${2.5+i*.7}s ease-in-out infinite`}}/>
+      ))}
+      <div style={{animation:"float 2.5s ease-in-out infinite",marginBottom:12,position:"relative",zIndex:1}}>
+        <Char mood="idle" color="#60a5fa" size={110}/>
+      </div>
+      <div style={{fontSize:11,letterSpacing:5,color:"#60a5fa",marginBottom:8,textTransform:"uppercase",position:"relative",zIndex:1}}>🧬 G2 Biology · Chapter 4</div>
+      <h1 style={{fontSize:48,fontWeight:900,margin:"0 0 4px",lineHeight:1,background:"linear-gradient(90deg,#60a5fa,#a78bfa,#f472b6,#fb923c)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",position:"relative",zIndex:1}}>ENZYME QUEST</h1>
+      <div style={{fontSize:12,color:"#475569",margin:"8px 0 28px",letterSpacing:2,position:"relative",zIndex:1}}>3 WORLDS · INFINITE REPLAYS · AI-POWERED</div>
+      <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:16,padding:"16px 22px",maxWidth:320,width:"100%",marginBottom:28,position:"relative",zIndex:1}}>
+        {["❤️  3 lives per world","🪙  Coins for correct answers","🔥  3-answer streak = bonus coins","⭐  Up to 3 stars per world","🔄  Fresh AI questions every playthrough"].map((t,i)=>(
+          <div key={i} style={{color:"#94a3b8",fontSize:13,padding:"4px 0",textAlign:"left"}}>{t}</div>
+        ))}
+      </div>
+      <button onClick={()=>setScreen("worldmap")} style={{background:"linear-gradient(135deg,#3b82f6,#8b5cf6,#ec4899)",color:"white",border:"none",borderRadius:99,padding:"16px 52px",fontSize:20,fontWeight:900,cursor:"pointer",animation:"glow 2s infinite",position:"relative",zIndex:1}}>▶ PLAY</button>
+    </div>
+  );
+
+  if(screen==="worldmap") return (
+    <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#020617,#0f172a)",display:"flex",flexDirection:"column",alignItems:"center",padding:"18px 14px 48px",position:"relative",overflow:"hidden"}}>
+      <Stars/>
+      <button onClick={()=>setScreen("title")} style={{alignSelf:"flex-start",background:"rgba(255,255,255,0.06)",color:"#64748b",border:"1px solid #1e293b",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,marginBottom:16,position:"relative",zIndex:1}}>← Back</button>
+      <h2 style={{fontSize:22,fontWeight:800,margin:"0 0 2px",position:"relative",zIndex:1}}>🗺️ World Map</h2>
+      <p style={{color:"#334155",fontSize:12,margin:"0 0 24px",position:"relative",zIndex:1}}>Complete worlds in order to unlock the next</p>
+      <div style={{width:"100%",maxWidth:440,display:"flex",flexDirection:"column",position:"relative",zIndex:1}}>
+        {MS.map((ms,i)=>{
+          const lk=!unlocked[i], dn=bSc[i]!==null;
+          return (
+            <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+              <div onClick={()=>!lk&&go(i)} style={{background:lk?"rgba(255,255,255,0.03)":ms.bg,border:`2px solid ${lk?"#1e293b":ms.color}`,borderRadius:20,padding:"18px 22px",width:"100%",maxWidth:360,display:"flex",alignItems:"center",gap:14,cursor:lk?"default":"pointer",opacity:lk?0.45:1,boxShadow:!lk?`0 0 24px ${ms.color}35`:"none",position:"relative",overflow:"hidden"}}>
+                {!lk&&<div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,rgba(255,255,255,0.06),transparent)",pointerEvents:"none"}}/>}
+                <div style={{fontSize:38,flexShrink:0}}>{lk?"🔒":ms.emoji}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:11,color:lk?"#334155":ms.light,textTransform:"uppercase",letterSpacing:1.5,marginBottom:2}}>{ms.world}</div>
+                  <div style={{fontSize:17,fontWeight:800}}>{ms.sub}</div>
+                  <div style={{display:"flex",gap:2,marginTop:5,alignItems:"center"}}>
+                    {[0,1,2].map(s=><span key={s} style={{fontSize:15,filter:`saturate(${bSt[i]>s?1:0})`,opacity:bSt[i]>s?1:0.2}}>⭐</span>)}
+                    {dn&&<span style={{color:"rgba(255,255,255,0.4)",fontSize:11,marginLeft:6}}>Best: 🪙{bSc[i]}</span>}
+                  </div>
+                </div>
+                {!lk&&<div style={{fontSize:22}}>{dn?"✅":"▶️"}</div>}
+              </div>
+              {i<2&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,margin:"6px 0",opacity:unlocked[i+1]?.6:.15}}>
+                <div style={{color:"#334155",fontSize:12}}>▼</div><div style={{color:"#334155",fontSize:12}}>▼</div>
+              </div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  if(screen==="loading") return (
+    <div style={{minHeight:"100vh",background:m.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,position:"relative",overflow:"hidden"}}>
+      <Stars/>
+      <div style={{animation:"spin 1s linear infinite",fontSize:52,position:"relative",zIndex:1}}>⚗️</div>
+      <p style={{color:m.light,fontSize:18,margin:0,fontWeight:700,position:"relative",zIndex:1}}>Generating {m.sub}...</p>
+      <p style={{color:"rgba(255,255,255,0.4)",fontSize:13,margin:0,position:"relative",zIndex:1}}>Fresh questions every playthrough!</p>
+    </div>
+  );
+
+  if(screen==="playing") {
+    const q = qs[qIdx]; if(!q) return null;
+    const iM=q.type==="mcq", iF=q.type==="fitb", iE=q.type==="explain";
+    const can = !fb&&!marking&&(iM?sel!==null:inp.trim().length>1);
+    const pts = iM?5:iF?10:15;
+    const parts = iF ? q.question.split("___") : [];
+    const qc = iF ? (
+      <span>
+        {parts[0]}
+        <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&can&&sub()} disabled={!!fb} placeholder="type here"
+          style={{background:"rgba(255,255,255,0.13)",border:`2px solid ${fb?(fb.ok?"#4ade80":"#f87171"):m.color}`,borderRadius:8,padding:"3px 10px",color:"white",fontSize:15,width:155,outline:"none",margin:"0 5px",fontFamily:"inherit"}}/>
+        {parts[1]||""}
+      </span>
+    ) : q.question;
+
+    return (
+      <div style={{minHeight:"100vh",background:m.bg,padding:"14px 12px 48px",position:"relative",overflow:"hidden"}}>
+        {conf&&<Confetti/>}
+        <Stars/>
+        {coins&&[0,1,2,3,4].map(i=>(
+          <div key={i} style={{position:"fixed",left:`${22+i*14}%`,top:"25%",fontSize:20,animation:`coinUp 1s ${i*.1}s ease-out forwards`,pointerEvents:"none",zIndex:200}}>🪙</div>
+        ))}
+        <div style={{maxWidth:580,margin:"0 auto 10px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",zIndex:1}}>
+          <button onClick={()=>setScreen("worldmap")} style={{background:"rgba(0,0,0,0.3)",color:"rgba(255,255,255,0.6)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"6px 11px",cursor:"pointer",fontSize:11}}>← Exit</button>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{display:"flex",gap:2}}>
+              {[0,1,2].map(i=><span key={i} style={{fontSize:17,filter:`saturate(${i<lives?1:0})`,opacity:i<lives?1:0.2,animation:i<lives?"heartbeat 1.8s infinite":"none",display:"inline-block"}}>❤️</span>)}
+            </div>
+            <div style={{background:"rgba(0,0,0,0.35)",borderRadius:99,padding:"4px 13px",display:"flex",alignItems:"center",gap:4}}>
+              <span>🪙</span><span style={{fontWeight:800,fontSize:14}}>{score}</span>
+            </div>
+            {streak>=2&&<span style={{color:"#f97316",fontWeight:800,fontSize:13,animation:"pulse 0.8s infinite"}}>🔥×{streak}</span>}
+          </div>
+        </div>
+        <div style={{maxWidth:580,margin:"0 auto 3px",background:"rgba(0,0,0,0.3)",borderRadius:99,height:5,position:"relative",zIndex:1}}>
+          <div style={{width:`${((qIdx+1)/qs.length)*100}%`,height:"100%",background:`linear-gradient(90deg,${m.color},${m.light})`,borderRadius:99,transition:"width 0.45s"}}/>
+        </div>
+        <div style={{textAlign:"center",color:"rgba(255,255,255,0.35)",fontSize:11,margin:"3px 0 14px",position:"relative",zIndex:1}}>Q{qIdx+1} of {qs.length} · {m.emoji} {m.sub}</div>
+        <div style={{maxWidth:580,margin:"0 auto 14px",display:"flex",gap:10,alignItems:"flex-start",position:"relative",zIndex:1}}>
+          <div style={{flexShrink:0}}><Char mood={mood} color={m.color} size={70} anim={ca}/></div>
+          <div style={{position:"relative",background:"rgba(255,255,255,0.09)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:"4px 18px 18px 18px",padding:"13px 15px",flex:1,fontSize:15,lineHeight:1.7}}>
+            <div style={{position:"absolute",left:-9,top:13,width:0,height:0,borderTop:"6px solid transparent",borderBottom:"6px solid transparent",borderRight:"9px solid rgba(255,255,255,0.09)"}}/>
+            {qc}
+          </div>
+        </div>
+        <div style={{maxWidth:580,margin:"0 auto",background:"rgba(0,0,0,0.35)",borderRadius:20,padding:"16px 14px",border:"1px solid rgba(255,255,255,0.08)",position:"relative",zIndex:1}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+            <div style={{background:m.color+"cc",borderRadius:99,padding:"3px 12px",fontSize:11,fontWeight:700,letterSpacing:.5}}>{iM?"⚡ MULTIPLE CHOICE":iF?"✏️ FILL IN BLANK":"📝 EXPLAIN"}</div>
+            <div style={{color:"#fbbf24",fontWeight:700,fontSize:12}}>+{pts} pts</div>
+          </div>
+          {iM&&!fb&&(
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {(q.options||[]).map((opt,i)=>{
+                const ltr=opt[0], ch=sel===ltr;
+                return <button key={i} onClick={()=>setSel(ltr)} style={{background:ch?m.color+"28":"rgba(255,255,255,0.05)",border:`2px solid ${ch?m.color:"rgba(255,255,255,0.12)"}`,borderRadius:12,padding:"11px 13px",color:"white",textAlign:"left",cursor:"pointer",fontSize:13,width:"100%"}}>{opt}</button>;
+              })}
+            </div>
+          )}
+          {iE&&!fb&&(
+            <textarea value={inp} onChange={e=>setInp(e.target.value)} rows={4} placeholder="Write your explanation here. Use keywords from your notes!"
+              style={{width:"100%",background:"rgba(255,255,255,0.06)",border:"2px solid rgba(255,255,255,0.12)",borderRadius:12,padding:11,color:"white",fontSize:13,resize:"vertical",outline:"none",boxSizing:"border-box",fontFamily:"inherit",lineHeight:1.65}}/>
+          )}
+          {marking&&<div style={{textAlign:"center",color:"rgba(255,255,255,0.5)",padding:16,animation:"pulse 1s infinite"}}>⚗️ Marking your answer...</div>}
+          {!fb&&!marking&&(
+            <button onClick={sub} disabled={!can} style={{marginTop:12,width:"100%",background:can?`linear-gradient(135deg,${m.color},${m.light})`:"rgba(255,255,255,0.05)",border:"none",borderRadius:12,padding:12,color:can?"#0f172a":"rgba(255,255,255,0.25)",fontSize:14,fontWeight:800,cursor:can?"pointer":"default"}}>Submit ▶</button>
+          )}
+          {fb&&(
+            <div style={{animation:"slideUp 0.3s ease"}}>
+              {iM&&(
+                <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:12}}>
+                  {(fb.opts||[]).map((opt,i)=>{
+                    const ltr=opt[0], isCo=ltr===(fb.ans||"").charAt(0).toUpperCase(), isSel=ltr===sel;
+                    const bg=isCo?"rgba(74,222,128,0.13)":isSel?"rgba(248,113,113,0.13)":"rgba(255,255,255,0.04)";
+                    const bd=isCo?"#4ade80":isSel?"#f87171":"rgba(255,255,255,0.08)";
+                    return <div key={i} style={{background:bg,border:`2px solid ${bd}`,borderRadius:12,padding:"10px 13px",fontSize:13}}>{opt}{isCo?" ✓":isSel?" ✗":""}</div>;
+                  })}
+                </div>
+              )}
+              <div style={{background:fb.ok?"rgba(74,222,128,0.12)":"rgba(248,113,113,0.12)",border:`1px solid ${fb.ok?"#4ade80":"#f87171"}`,borderRadius:12,padding:"11px 13px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{color:fb.ok?"#4ade80":"#f87171",fontWeight:800,fontSize:15}}>{fb.ok?"✅ Correct!":"❌ Not quite!"}</span>
+                  <span style={{color:"#fbbf24",fontWeight:800,fontSize:14}}>🪙+{fb.pts}{fb.bon?` +${fb.bon}⚡`:""}</span>
+                </div>
+                {fb.bon>0&&<div style={{color:"#fb923c",fontSize:12,marginTop:3}}>🔥 {streak}-answer streak bonus!</div>}
+                {!fb.ok&&fb.nl>0&&<div style={{color:"#f87171",fontSize:12,marginTop:3}}>❤️ {fb.nl} {fb.nl===1?"life":"lives"} remaining</div>}
+              </div>
+              {iE&&fb.msg&&(
+                <div style={{background:"rgba(59,130,246,0.12)",border:"1px solid rgba(59,130,246,0.4)",borderRadius:12,padding:12,marginBottom:10}}>
+                  <div style={{fontWeight:700,color:"#60a5fa",fontSize:11,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>📋 Teacher Feedback</div>
+                  <p style={{margin:0,color:"#cbd5e1",fontSize:13,lineHeight:1.65}}>{fb.msg}</p>
+                </div>
+              )}
+              <div style={{background:"rgba(0,0,0,0.35)",borderRadius:12,padding:12,marginBottom:12}}>
+                <div style={{color:"rgba(255,255,255,0.35)",fontSize:11,textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>💡 {iE?"Model Answer":"Correct Answer"}</div>
+                {iE ? <p style={{margin:0,color:"#e2e8f0",lineHeight:1.7,fontSize:13}}>{fb.ma}</p>
+                    : <><p style={{margin:"0 0 4px",color:"#4ade80",fontWeight:700,fontSize:14}}>{fb.ans}</p><p style={{margin:0,color:"rgba(255,255,255,0.45)",fontSize:12,lineHeight:1.5}}>{fb.hint}</p></>}
+              </div>
+              <button onClick={nxt} style={{width:"100%",background:`linear-gradient(135deg,${m.color},${m.light})`,border:"none",borderRadius:12,padding:12,color:"#0f172a",fontSize:14,fontWeight:800,cursor:"pointer"}}>
+                {qIdx+1>=qs.length?"🏆 Complete World!":"Next →"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if(screen==="gameOver") return (
+    <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#1c0505,#450a0a,#7f1d1d)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,textAlign:"center",position:"relative",overflow:"hidden"}}>
+      <Stars/>
+      <div style={{position:"relative",zIndex:1}}><Char mood="sad" color="#ef4444" size={110} anim="shake"/></div>
+      <h2 style={{fontSize:32,fontWeight:900,color:"#f87171",margin:"16px 0 6px",position:"relative",zIndex:1}}>Out of Lives!</h2>
+      <p style={{color:"#94a3b8",marginBottom:28,position:"relative",zIndex:1}}>Every mistake is a learning moment!<br/>Review your notes and try again!</p>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",position:"relative",zIndex:1}}>
+        <button onClick={()=>go(mIdx)} style={{background:"linear-gradient(135deg,#ef4444,#f97316)",color:"white",border:"none",borderRadius:12,padding:"14px 26px",cursor:"pointer",fontSize:15,fontWeight:800}}>🔄 Try Again</button>
+        <button onClick={()=>setScreen("worldmap")} style={{background:"rgba(255,255,255,0.08)",color:"white",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"14px 26px",cursor:"pointer",fontSize:15}}>World Map</button>
+      </div>
+    </div>
+  );
+
+  if(screen==="missionEnd") {
+    const pct = maxP>0?Math.round((eScore/maxP)*100):0;
+    const msgs = ["Keep studying — you can do it! 📚","Good effort! Review your notes! 👍","Great work! Almost there! 🎉","Perfect score! Enzyme master! 🌟"];
+    return (
+      <div style={{minHeight:"100vh",background:m.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,textAlign:"center",position:"relative",overflow:"hidden"}}>
+        {conf&&<Confetti/>}
+        <Stars/>
+        <div style={{animation:"jump 0.9s ease forwards",position:"relative",zIndex:1}}><Char mood="happy" color={m.color} size={110}/></div>
+        <h2 style={{fontSize:26,fontWeight:900,margin:"12px 0 2px",position:"relative",zIndex:1}}>World Complete! {m.emoji}</h2>
+        <p style={{color:m.light,margin:"0 0 20px",fontSize:14,position:"relative",zIndex:1}}>{m.sub}</p>
+        <div style={{display:"flex",gap:8,marginBottom:20,justifyContent:"center",position:"relative",zIndex:1}}>
+          {[0,1,2].map(i=><span key={i} style={{fontSize:36,filter:`saturate(${eStars>i?1:0})`,opacity:eStars>i?1:0.2,animation:eStars>i?`starIn 0.4s ${i*.18}s both`:"none",display:"inline-block"}}>⭐</span>)}
+        </div>
+        <div style={{background:"rgba(0,0,0,0.4)",borderRadius:20,padding:24,maxWidth:320,width:"100%",marginBottom:22,border:`1px solid ${m.color}50`,position:"relative",zIndex:1}}>
+          <div style={{fontSize:44,fontWeight:900,color:"#fbbf24"}}>🪙{eScore}</div>
+          <div style={{color:"rgba(255,255,255,0.35)",marginBottom:14,fontSize:13}}>out of {maxP} pts · {pct}%</div>
+          <div style={{background:"rgba(0,0,0,0.3)",borderRadius:99,height:10,overflow:"hidden",marginBottom:10}}>
+            <div style={{width:pct+"%",height:"100%",background:`linear-gradient(90deg,${m.color},${m.light})`,transition:"width 1.2s"}}/>
+          </div>
+          <div style={{fontSize:15}}>{msgs[Math.min(eStars,3)]}</div>
+        </div>
+        <div style={{display:"flex",gap:9,flexWrap:"wrap",justifyContent:"center",position:"relative",zIndex:1}}>
+          <button onClick={()=>go(mIdx)} style={{background:"rgba(255,255,255,0.1)",color:"white",border:"1px solid rgba(255,255,255,0.2)",borderRadius:12,padding:"12px 18px",cursor:"pointer",fontSize:13}}>🔄 Replay</button>
+          {mIdx+1<3&&<button onClick={()=>go(mIdx+1)} style={{background:`linear-gradient(135deg,${m.color},${m.light})`,color:"#0f172a",border:"none",borderRadius:12,padding:"12px 20px",cursor:"pointer",fontSize:14,fontWeight:800}}>{MS[mIdx+1].emoji} Next World →</button>}
+          <button onClick={()=>setScreen("worldmap")} style={{background:"rgba(255,255,255,0.08)",color:"white",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"12px 18px",cursor:"pointer",fontSize:13}}>World Map</button>
+        </div>
+      </div>
+    );
+  }
+
+  if(screen==="allDone") {
+    const total=bSc.reduce((s,v)=>s+(v||0),0), totalSt=bSt.reduce((s,v)=>s+v,0);
+    return (
+      <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#020617,#0f172a,#1e1b4b)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,textAlign:"center",position:"relative",overflow:"hidden"}}>
+        {conf&&<Confetti/>}
+        <Stars/>
+        <div style={{fontSize:72,animation:"float 2s infinite",position:"relative",zIndex:1}}>🏆</div>
+        <h1 style={{fontSize:34,fontWeight:900,margin:"12px 0 4px",background:"linear-gradient(90deg,#fbbf24,#f97316,#ec4899)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",position:"relative",zIndex:1}}>Quest Complete!</h1>
+        <p style={{color:"#64748b",margin:"0 0 24px",position:"relative",zIndex:1}}>You conquered all 3 worlds! Enzyme master!</p>
+        <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,padding:26,maxWidth:360,width:"100%",marginBottom:24,position:"relative",zIndex:1}}>
+          <div style={{fontSize:44,fontWeight:900,color:"#fbbf24"}}>🪙{total}</div>
+          <div style={{color:"#334155",marginBottom:18,fontSize:13}}>total coins earned</div>
+          <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:14}}>
+            {MS.map((ms,i)=>(
+              <div key={i} style={{background:ms.bg,borderRadius:14,padding:"12px 10px",flex:1,border:`1px solid ${ms.color}40`}}>
+                <div style={{fontSize:22}}>{ms.emoji}</div>
+                <div style={{fontWeight:800,color:"#fbbf24",fontSize:17}}>🪙{bSc[i]||0}</div>
+                <div style={{display:"flex",justifyContent:"center",gap:1,marginTop:3}}>
+                  {[0,1,2].map(s=><span key={s} style={{fontSize:11,opacity:bSt[i]>s?1:0.2}}>⭐</span>)}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:18}}>{"⭐".repeat(totalSt)}{"🌑".repeat(9-totalSt)}</div>
+          <div style={{color:"#475569",fontSize:12,marginTop:4}}>{totalSt}/9 stars</div>
+        </div>
+        <button onClick={()=>{setUnlocked([true,false,false]);setBSc([null,null,null]);setBSt([0,0,0]);setScreen("worldmap");}}
+          style={{background:"linear-gradient(135deg,#3b82f6,#8b5cf6)",color:"white",border:"none",borderRadius:99,padding:"14px 44px",fontSize:16,fontWeight:800,cursor:"pointer",position:"relative",zIndex:1}}>
+          Play Again 🔄
+        </button>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+
+</script>
+</body>
+</html>
